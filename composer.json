@@ -1,0 +1,22 @@
+{
+  "name": "sfnix/upstart_monitor",
+  "description": "Symfony based web UI for sfnix/upstart bundle. (Painless Upstart configuration. It helps to make any script run forever in background on Linux.)",
+  "type": "symfony-bundle",
+  "keywords": ["symfony", "bundle", "ui", "monitor", "upstart", "utils", "linux", "service", "background"],
+  "homepage": "https://github.com/tarasbogach/UpstartBundleMonitor",
+  "license": "GPL",
+  "authors": [
+    {"name": "Taras Bogach", "email": "taras.bogach@gmail.com"}
+  ],
+  "autoload": {
+    "psr-4": { "SfNix\\UpstartBundleMonitor\\": "" }
+  },
+  "require": {
+    "sfnix/upstart": "*",
+    "react/socket": "*"
+  },
+  "suggest": {
+    "ext-openssl": "*",
+    "ext-mcrypt": "*"
+  }
+}

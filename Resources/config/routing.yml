@@ -1,0 +1,3 @@
+upstart_monitor_homepage:
+    path:     /
+    defaults: { _controller: UpstartMonitorBundle:Default:index }

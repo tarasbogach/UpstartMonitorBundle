@@ -1,0 +1,9 @@
+$ns: "UpstartMonitor-";
+$el: "UpstartMonitor-el-";
+.#{$el}root{
+  background: #222;
+  padding-top: 70px;
+  padding-bottom: 70px;
+}
+.#{$el}jobPanel{
+}
