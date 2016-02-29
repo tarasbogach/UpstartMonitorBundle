@@ -27,7 +27,9 @@ class Configuration implements ConfigurationInterface{
 			->end()
 			->arrayNode('client')->isRequired()
 				->children()
-					->scalarNode('url')->defaultValue('ws://127.0.0.1:13000')->isRequired()->end()
+					->scalarNode('schema')->defaultValue('ws')->isRequired()->end()
+					->scalarNode('port')->defaultValue(13000)->isRequired()->end()
+					->scalarNode('path')->defaultValue('/')->isRequired()->end()
 				->end()
 			->end()
 		;

@@ -4,6 +4,7 @@ class @UpstartMonitor
 	cnf: null
 	job: null
 	tag: null
+	ws: null
 	constructor:(el, @cnf)->
 		@ns = arguments.callee.name
 		@el = {}
@@ -13,7 +14,26 @@ class @UpstartMonitor
 		@tag = {}
 		@createTag(tag) for tagName, tag of @cnf.tag
 		@createJob(job) for jobName, job of @cnf.job
+		@el.disconnected.modal({show: false, keyboard: false})
+		@createWs()
 		console?.log(@)
+	createWs:=>
+		@ws?.close()
+		@ws = new WebSocket(@cnf.client.schema+'://'+window.location.hostname+':'+@cnf.client.port+@cnf.client.path)
+		@ws.onmessage = @onMessage
+		@ws.onopen = @onConnected
+		@ws.onclose = @onDisconnected
+		@ws.onerror = @onError
+	onMessage:(e)=>
+		console?.log(e)
+	onConnected:(e)=>
+		@el.disconnected.modal('hide')
+	onDisconnected:(e)=>
+		console?.log(e)
+		@el.disconnected.modal('show')
+		@createWs()
+	onError:(e)=>
+		@el.disconnected.modal('show')
 	createTag:(tag)->
 		@tag[tag.name] = $('<button class="navbar-btn btn btn-xs btn-success"></button>')
 			.data(tag)
@@ -28,12 +48,12 @@ class @UpstartMonitor
 			stopped: null
 			start: null
 			stop: null
-			restrat: null
+			restart: null
 			log: null
 			tags: null
 		}
 		td = '<td></td>'
-		map.row = $('<tr></tr>').addClass('danger').appendTo(@el.job)
+		map.row = $('<tr></tr>').appendTo(@el.job)
 		map.name = $('<strong></strong>').text(job.name ? '').appendTo($(td).attr('width', '80%').appendTo(map.row))
 		map.tags = $(td).appendTo(map.row)
 		for tagName in job.tag
