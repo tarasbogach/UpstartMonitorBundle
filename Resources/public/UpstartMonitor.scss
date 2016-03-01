@@ -7,3 +7,29 @@ $el: "UpstartMonitor-el-";
 }
 .#{$el}jobPanel{
 }
+.#{$el}disconnected{
+  display: none;
+  position: fixed;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left: 0px;
+  z-index: 2000;
+  background: rgba(0, 0, 0, .5);
+  div{
+    line-height: 1.5em;
+    font-weight: bold;
+    height: 2em;
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    bottom: 0px;
+    left: 0px;
+    margin: auto auto;
+    width: 350px;
+    border-radius: 5px;
+    background: white;
+    padding: 3px 5px;
+    text-align: center;
+  }
+}

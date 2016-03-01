@@ -39,10 +39,6 @@
         job = ref1[jobName];
         this.createJob(job);
       }
-      this.el.disconnected.modal({
-        show: false,
-        keyboard: false
-      });
       this.createWs();
       if (typeof console !== "undefined" && console !== null) {
         console.log(this);
@@ -62,23 +58,29 @@
     };
 
     UpstartMonitor.prototype.onMessage = function(e) {
-      return typeof console !== "undefined" && console !== null ? console.log(e) : void 0;
+      var jobs, name, results;
+      jobs = JSON.parse(e.data);
+      results = [];
+      for (name in jobs) {
+        results.push(this.job[name]);
+      }
+      return results;
     };
 
     UpstartMonitor.prototype.onConnected = function(e) {
-      return this.el.disconnected.modal('hide');
+      return this.el.disconnected.hide();
     };
 
     UpstartMonitor.prototype.onDisconnected = function(e) {
       if (typeof console !== "undefined" && console !== null) {
         console.log(e);
       }
-      this.el.disconnected.modal('show');
+      this.el.disconnected.show();
       return this.createWs();
     };
 
     UpstartMonitor.prototype.onError = function(e) {
-      return this.el.disconnected.modal('show');
+      return this.el.disconnected.show();
     };
 
     UpstartMonitor.prototype.createTag = function(tag) {

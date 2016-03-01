@@ -14,7 +14,6 @@ class @UpstartMonitor
 		@tag = {}
 		@createTag(tag) for tagName, tag of @cnf.tag
 		@createJob(job) for jobName, job of @cnf.job
-		@el.disconnected.modal({show: false, keyboard: false})
 		@createWs()
 		console?.log(@)
 	createWs:=>
@@ -25,15 +24,18 @@ class @UpstartMonitor
 		@ws.onclose = @onDisconnected
 		@ws.onerror = @onError
 	onMessage:(e)=>
-		console?.log(e)
+		jobs = JSON.parse(e.data)
+		for name of jobs
+#			cnf =
+			@job[name]
 	onConnected:(e)=>
-		@el.disconnected.modal('hide')
+		@el.disconnected.hide()
 	onDisconnected:(e)=>
 		console?.log(e)
-		@el.disconnected.modal('show')
+		@el.disconnected.show()
 		@createWs()
 	onError:(e)=>
-		@el.disconnected.modal('show')
+		@el.disconnected.show()
 	createTag:(tag)->
 		@tag[tag.name] = $('<button class="navbar-btn btn btn-xs btn-success"></button>')
 			.data(tag)
