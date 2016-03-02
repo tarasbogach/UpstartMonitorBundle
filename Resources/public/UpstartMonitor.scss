@@ -5,10 +5,19 @@ $el: "UpstartMonitor-el-";
   padding-top: 70px;
   padding-bottom: 70px;
 }
+@keyframes #{$ns}highlight {
+  0% {background: white;}
+  25% {background: orange;}
+  50% {background: white;}
+  75% {background: orange;}
+  100% {background: white;}
+}
+.#{$ns}highlight{
+  animation: 3s #{$ns}highlight;
+}
 .#{$el}jobPanel{
 }
 .#{$el}disconnected{
-  display: none;
   position: fixed;
   top: 0px;
   right: 0px;

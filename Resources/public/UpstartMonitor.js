@@ -15,20 +15,24 @@
 
     UpstartMonitor.prototype.ws = null;
 
-    function UpstartMonitor(el, cnf) {
+    UpstartMonitor.prototype.filter = null;
+
+    function UpstartMonitor(el, cnf1) {
       var job, jobName, ref, ref1, tag, tagName;
-      this.cnf = cnf;
+      this.cnf = cnf1;
       this.onError = bind(this.onError, this);
       this.onDisconnected = bind(this.onDisconnected, this);
       this.onConnected = bind(this.onConnected, this);
       this.onMessage = bind(this.onMessage, this);
       this.createWs = bind(this.createWs, this);
+      this.onAction = bind(this.onAction, this);
       this.ns = arguments.callee.name;
       this.el = {};
       this.addEl('root', el);
       this.initEl();
       this.job = {};
       this.tag = {};
+      this.filter = [];
       ref = this.cnf.tag;
       for (tagName in ref) {
         tag = ref[tagName];
@@ -39,11 +43,31 @@
         job = ref1[jobName];
         this.createJob(job);
       }
+      this.el.start.click({
+        action: 'start'
+      }, this.onAction);
+      this.el.stop.click({
+        action: 'stop'
+      }, this.onAction);
+      this.el.restart.click({
+        action: 'restart'
+      }, this.onAction);
       this.createWs();
       if (typeof console !== "undefined" && console !== null) {
         console.log(this);
       }
     }
+
+    UpstartMonitor.prototype.onAction = function(ev) {
+      var ref;
+      return this.ws.send(JSON.stringify({
+        type: 'action',
+        data: {
+          action: ev.data.action,
+          filter: (ref = ev.data.filer) != null ? ref : this.filter
+        }
+      }));
+    };
 
     UpstartMonitor.prototype.createWs = function() {
       var ref;
@@ -58,11 +82,32 @@
     };
 
     UpstartMonitor.prototype.onMessage = function(e) {
-      var jobs, name, results;
-      jobs = JSON.parse(e.data);
+      var msg;
+      msg = JSON.parse(e.data);
+      switch (msg.type) {
+        case 'state':
+          return this.updateState(msg.data);
+      }
+    };
+
+    UpstartMonitor.prototype.updateState = function(jobs) {
+      var cnf, els, highlight, name, prevQuantity, quantity, ref, results, state;
       results = [];
       for (name in jobs) {
-        results.push(this.job[name]);
+        state = jobs[name];
+        cnf = this.cnf.job[name];
+        els = this.job[name];
+        quantity = cnf.quantity > 1 ? state[1] : state[0];
+        prevQuantity = (ref = els.quantity) != null ? ref : 0;
+        els.quantity = quantity;
+        els.started.text(quantity);
+        els.stopped.text(cnf.quantity - quantity);
+        if (prevQuantity !== quantity) {
+          highlight = this.getNsClass('highlight');
+          results.push(els.row.removeClass(highlight).addClass(highlight));
+        } else {
+          results.push(void 0);
+        }
       }
       return results;
     };
@@ -72,9 +117,6 @@
     };
 
     UpstartMonitor.prototype.onDisconnected = function(e) {
-      if (typeof console !== "undefined" && console !== null) {
-        console.log(e);
-      }
       this.el.disconnected.show();
       return this.createWs();
     };
@@ -92,6 +134,7 @@
     UpstartMonitor.prototype.createJob = function(job) {
       var i, len, map, ref, ref1, tagEl, tagName, td;
       this.job[job.name] = map = {
+        quantity: 0,
         row: null,
         name: null,
         started: null,

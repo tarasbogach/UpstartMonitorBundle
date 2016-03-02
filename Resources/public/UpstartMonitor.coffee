@@ -5,6 +5,7 @@ class @UpstartMonitor
 	job: null
 	tag: null
 	ws: null
+	filter: null
 	constructor:(el, @cnf)->
 		@ns = arguments.callee.name
 		@el = {}
@@ -12,10 +13,22 @@ class @UpstartMonitor
 		@initEl()
 		@job = {}
 		@tag = {}
+		@filter = []
 		@createTag(tag) for tagName, tag of @cnf.tag
 		@createJob(job) for jobName, job of @cnf.job
+		@el.start.click({action: 'start'}, @onAction)
+		@el.stop.click({action: 'stop'}, @onAction)
+		@el.restart.click({action: 'restart'}, @onAction)
 		@createWs()
 		console?.log(@)
+	onAction:(ev)=>
+		@ws.send(JSON.stringify({
+			type:'action'
+			data: {
+				action: ev.data.action
+				filter: ev.data.filer ? @filter
+			}
+		}))
 	createWs:=>
 		@ws?.close()
 		@ws = new WebSocket(@cnf.client.schema+'://'+window.location.hostname+':'+@cnf.client.port+@cnf.client.path)
@@ -24,14 +37,25 @@ class @UpstartMonitor
 		@ws.onclose = @onDisconnected
 		@ws.onerror = @onError
 	onMessage:(e)=>
-		jobs = JSON.parse(e.data)
-		for name of jobs
-#			cnf =
-			@job[name]
+		msg = JSON.parse(e.data)
+		switch msg.type
+			when 'state'
+				@updateState(msg.data)
+	updateState:(jobs)->
+		for name, state of jobs
+			cnf = @cnf.job[name]
+			els = @job[name]
+			quantity = if cnf.quantity > 1 then state[1] else state[0]
+			prevQuantity = els.quantity ? 0
+			els.quantity = quantity
+			els.started.text(quantity)
+			els.stopped.text(cnf.quantity - quantity)
+			if prevQuantity != quantity
+				highlight = @getNsClass('highlight')
+				els.row.removeClass(highlight).addClass(highlight)
 	onConnected:(e)=>
 		@el.disconnected.hide()
 	onDisconnected:(e)=>
-		console?.log(e)
 		@el.disconnected.show()
 		@createWs()
 	onError:(e)=>
@@ -44,6 +68,7 @@ class @UpstartMonitor
 		@el.tag.append(' ')
 	createJob:(job)->
 		@job[job.name] = map = {
+			quantity: 0
 			row: null
 			name: null
 			started: null

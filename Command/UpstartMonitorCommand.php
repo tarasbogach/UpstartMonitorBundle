@@ -37,8 +37,6 @@ class UpstartMonitorCommand
 	 */
 	protected $server;
 
-	protected $state;
-
 	protected function configure(){
 		$this
 			->setName('upstart:monitor')
@@ -61,59 +59,61 @@ class UpstartMonitorCommand
 	}
 
 	public function getState(){
-		$this->state = [];
 		$project = escapeshellarg($this->jobConfig['project'] . '/');
 		$fp = popen("initctl list | grep $project", 'r');
-		$this->server->loop->addReadStream($fp, [$this, 'onStateProgress']);
+		$state = [];
+		$this->server->loop->addReadStream($fp, function($fp) use (&$state){
+			if(feof($fp)){
+				$this->server->loop->removeReadStream($fp);
+				if(count($this->clients) > 0){
+					$this->onStateReceived($state);
+					$this->server->loop->addTimer(1., [$this, 'getState']);
+				}
+			}else{
+				$line = trim(fgets($fp));
+				if(!$line){
+					return;
+				}
+				$match = [];
+				preg_match(
+					'@^
+						((\\S*?)/(\\S*?)(\.instance)?)
+						(\\s\((\\S*?)\))?
+						(\\s(\\S*?)/(\\S*?))?
+						(,\\sprocess\\s(\\d+))?
+					$@x',
+					$line,
+					$match
+				);
+				list(
+						,//[0] => imagin/test.instance (2) start/running, process 10110
+						,//[1] => imagin/test.instance
+						,//[2] => imagin
+						$job,//[3] => test
+						$instance,//[4] => .instance
+						,//[5] =>  (2)
+						,//$env//[6] => 2
+						,//[7] =>  start/running
+						$goal,//[8] => start
+						$status,//[9] => running
+						) = $match;
+				$instance = (int)(bool)$instance;
+				if(!isset($state[$job])){
+					$state[$job] = [0, 0];
+				}
+				if($goal == 'start'){
+					$state[$job][$instance]++;
+				}
+//				if(!in_array("$goal/$status", ["stop/waiting","start/running"])){
+//					$this->output->writeln("$goal/$status");
+//				}
+			}
+		});
 	}
 
-	public function onStateProgress($fp){
-		if(feof($fp)){
-			$this->server->loop->removeReadStream($fp);
-			if(count($this->clients) > 0){
-				$this->onStateReceived();
-				$this->server->loop->addTimer(1., [$this, 'getState']);
-			}
-		}else{
-			$state = trim(fgets($fp));
-			if(!$state){
-				return;
-			}
-			$match = [];
-			preg_match(
-				'@^
-				((\\S*?)/(\\S*?)(\.instance)?)
-				(\\s\((\\S*?)\))?
-				(\\s(\\S*?)/(\\S*?))?
-				(,\\sprocess\\s(\\d+))?
-			$@x',
-				$state,
-				$match
-			);
-			list(
-				,//[0] => imagin/test.instance (2) start/running, process 10110
-				,//[1] => imagin/test.instance
-				,//[2] => imagin
-				$job,//[3] => test
-				$instance,//[4] => .instance
-				,//[5] =>  (2)
-				,//$env//[6] => 2
-				,//[7] =>  start/running
-				$status,//[8] => start
-				,//[9] => running
-				) = $match;
-			$instance = (int)(bool)$instance;
-			if(!isset($this->state[$job])){
-				$this->state[$job] = [0, 0];
-			}
-			if($status == 'start'){
-				$this->state[$job][$instance]++;
-			}
-		}
-	}
-
-	public function onStateReceived(){
-		$state = json_encode(['type' => 'state', 'data' => $this->state]);
+	public function onStateReceived($state){
+//		$this->output->writeln(json_encode($state));
+		$state = json_encode(['type' => 'state', 'data' => $state]);
 		foreach($this->clients as $client){
 			/**
 			 * @var ConnectionInterface $client

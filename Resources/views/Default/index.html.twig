@@ -24,17 +24,17 @@
                 <a class="navbar-brand" href="#">
                     <img height="20" src="{{ asset('bundles/upstartmonitor/120px-Logo_for_Upstart_daemon.png') }}">
                 </a>
-                <button class="navbar-btn btn btn-sm btn-success">
+                <button class="navbar-btn btn btn-sm btn-success {{ el }}start">
                     <span class="glyphicon glyphicon-play"></span>
-                    Start all
+                    Start <span class="{{ el }}selectedTag"></span>
                 </button>
-                <button class="navbar-btn btn btn-sm btn-danger">
+                <button class="navbar-btn btn btn-sm btn-danger {{ el }}stop">
                     <span class="glyphicon glyphicon-stop"></span>
-                    Stop all
+                    Stop <span class="{{ el }}selectedTag"></span>
                 </button>
-                <button class="navbar-btn btn btn-sm btn-warning">
+                <button class="navbar-btn btn btn-sm btn-warning {{ el }}restart">
                     <span class="glyphicon glyphicon-refresh"></span>
-                    Restart all
+                    Restart <span class="{{ el }}selectedTag"></span>
                 </button>
             </div>
         </div>
