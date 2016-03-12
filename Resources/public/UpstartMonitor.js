@@ -15,11 +15,12 @@
 
     UpstartMonitor.prototype.ws = null;
 
-    UpstartMonitor.prototype.filter = null;
+    UpstartMonitor.prototype.filterTag = null;
 
     function UpstartMonitor(el, cnf1) {
       var job, jobName, ref, ref1, tag, tagName;
       this.cnf = cnf1;
+      this.onTag = bind(this.onTag, this);
       this.onError = bind(this.onError, this);
       this.onDisconnected = bind(this.onDisconnected, this);
       this.onConnected = bind(this.onConnected, this);
@@ -32,7 +33,6 @@
       this.initEl();
       this.job = {};
       this.tag = {};
-      this.filter = [];
       ref = this.cnf.tag;
       for (tagName in ref) {
         tag = ref[tagName];
@@ -43,6 +43,7 @@
         job = ref1[jobName];
         this.createJob(job);
       }
+      this.el.allTags.click(this.onTag);
       this.el.start.click({
         action: 'start'
       }, this.onAction);
@@ -59,12 +60,13 @@
     }
 
     UpstartMonitor.prototype.onAction = function(ev) {
-      var ref;
+      var ref, ref1, ref2;
       return this.ws.send(JSON.stringify({
         type: 'action',
         data: {
           action: ev.data.action,
-          filter: (ref = ev.data.filer) != null ? ref : this.filter
+          job: (ref = (ref1 = ev.data.job) != null ? ref1.name : void 0) != null ? ref : null,
+          tag: (ref2 = this.filterTag) != null ? ref2 : null
         }
       }));
     };
@@ -91,7 +93,8 @@
     };
 
     UpstartMonitor.prototype.updateState = function(jobs) {
-      var cnf, els, highlight, name, prevQuantity, quantity, ref, results, state;
+      var cnf, cssState, els, highlight, name, prevQuantity, quantity, ref, results, state;
+      highlight = this.getNsClass('highlight');
       results = [];
       for (name in jobs) {
         state = jobs[name];
@@ -101,9 +104,21 @@
         prevQuantity = (ref = els.quantity) != null ? ref : 0;
         els.quantity = quantity;
         els.started.text(quantity);
-        els.stopped.text(cnf.quantity - quantity);
+        switch (true) {
+          case quantity === 0:
+            cssState = 'label-danger';
+            break;
+          case quantity < cnf.quantity:
+            cssState = 'label-warning';
+            break;
+          case quantity >= cnf.quantity:
+            cssState = 'label-success';
+        }
+        els.state.removeClass('label-danger').removeClass('label-success').removeClass('label-warning').addClass(cssState);
+        els.stop.prop('disabled', quantity === 0);
+        els.restart.prop('disabled', quantity === 0);
+        els.start.prop('disabled', quantity >= cnf.quantity);
         if (prevQuantity !== quantity) {
-          highlight = this.getNsClass('highlight');
           results.push(els.row.removeClass(highlight).addClass(highlight));
         } else {
           results.push(void 0);
@@ -126,19 +141,34 @@
     };
 
     UpstartMonitor.prototype.createTag = function(tag) {
+      $('<li><a href="#"></a></li>').appendTo(this.el.tag).click({
+        tag: tag.name
+      }, this.onTag).find('a').text(tag.name);
+      if (tag != null) {
+        return this.tag[tag.name] = $([]);
+      }
+    };
+
+    UpstartMonitor.prototype.onTag = function(ev) {
       var ref;
-      this.tag[tag.name] = $('<button class="navbar-btn btn btn-xs btn-success"></button>').data(tag).text((ref = tag.name) != null ? ref : '').appendTo(this.el.tag);
-      return this.el.tag.append(' ');
+      if (((ref = ev.data) != null ? ref.tag : void 0) != null) {
+        this.el.job.find('tr').hide();
+        this.tag[ev.data.tag].show();
+        return this.filterTag = ev.data.tag;
+      } else {
+        this.el.job.find('tr').show();
+        return this.filterTag = null;
+      }
     };
 
     UpstartMonitor.prototype.createJob = function(job) {
-      var i, len, map, ref, ref1, tagEl, tagName, td;
+      var i, len, map, nameTd, ref, ref1, tagName, td;
       this.job[job.name] = map = {
         quantity: 0,
         row: null,
         name: null,
         started: null,
-        stopped: null,
+        state: null,
         start: null,
         stop: null,
         restart: null,
@@ -146,29 +176,49 @@
         tags: null
       };
       td = '<td></td>';
-      map.row = $('<tr></tr>').appendTo(this.el.job);
-      map.name = $('<strong></strong>').text((ref = job.name) != null ? ref : '').appendTo($(td).attr('width', '80%').appendTo(map.row));
-      map.tags = $(td).appendTo(map.row);
+      map.row = $('<tr></tr>').data('name', job.name).appendTo(this.el.job);
+      map.state = $('<span class="label label-danger"></span>').appendTo($(td).appendTo(map.row));
+      map.started = $('<span>0</span>').appendTo(map.state);
+      map.state.append(' / ');
+      $('<span></span>').text(job.quantity).appendTo(map.state);
+      nameTd = $(td).css('width', '80%').appendTo(map.row);
+      map.name = $('<strong></strong>').text((ref = job.name) != null ? ref : '').appendTo(nameTd);
+      map.tags = $('<span class="pull-right"></span>').appendTo(nameTd);
+      map.tags.append(' ');
       ref1 = job.tag;
       for (i = 0, len = ref1.length; i < len; i++) {
         tagName = ref1[i];
-        tagEl = $('<button class="btn btn-xs btn-success"></button>').data(this.cnf.tag[tagName]).text(tagName != null ? tagName : '').appendTo(map.tags);
-        this.tag[tagName].add(tagEl);
+        $('<button class="btn btn-xs btn-primary"></button>').appendTo(map.tags).click({
+          tag: tagName
+        }, this.onTag).text(tagName != null ? tagName : '');
+        this.tag[tagName] = this.tag[tagName].add(map.row);
         map.tags.append(' ');
       }
-      map.started = $('<span class="label label-success">0</span>').appendTo($(td).appendTo(map.row));
-      map.stopped = $('<span class="label label-danger">0</span>').appendTo($(td).appendTo(map.row));
-      map.start = $('<button class="btn btn-xs btn-success" title="Start"> <span class="glyphicon glyphicon-play"></span> </button>').prop('disabled', true).appendTo($(td).appendTo(map.row));
-      map.stop = $('<button class="btn btn-xs btn-danger" title="Stop"> <span class="glyphicon glyphicon-stop"></span> </button>').prop('disabled', true).appendTo($(td).appendTo(map.row));
-      map.restart = $('<button class="btn btn-xs btn-warning" title="Restart"> <span class="glyphicon glyphicon-refresh"></span> </button>').prop('disabled', true).appendTo($(td).appendTo(map.row));
-      return map.log = $('<button class="btn btn-xs btn-info" title="Log"> <span class="glyphicon glyphicon-open-file"></span> </button>').appendTo($(td).appendTo(map.row));
+      map.start = $('<button class="btn btn-xs btn-success" title="Start"> <span class="glyphicon glyphicon-play"></span> </button>').prop('disabled', true).click({
+        action: 'start',
+        job: job
+      }, this.onAction).appendTo($(td).appendTo(map.row));
+      map.stop = $('<button class="btn btn-xs btn-danger" title="Stop"> <span class="glyphicon glyphicon-stop"></span> </button>').prop('disabled', true).click({
+        action: 'stop',
+        job: job
+      }, this.onAction).appendTo($(td).appendTo(map.row));
+      map.restart = $('<button class="btn btn-xs btn-warning" title="Restart"> <span class="glyphicon glyphicon-refresh"></span> </button>').prop('disabled', true).click({
+        action: 'restart',
+        job: job
+      }, this.onAction).appendTo($(td).appendTo(map.row));
+      return map.log = $('<button class="btn btn-xs btn-info" title="Log"> <span class="glyphicon glyphicon-open-file"></span> </button>').click({
+        action: 'log',
+        job: job
+      }, this.onAction).appendTo($(td).appendTo(map.row));
     };
 
     UpstartMonitor.prototype.addEl = function(name, tmpl) {
+      var el;
       if (tmpl == null) {
         tmpl = '<div></div>';
       }
-      return this.el[name] = $(tmpl).addClass(this.getElClass(name));
+      el = $(tmpl).addClass(this.getElClass(name));
+      return this.el[name] = this.el[name] != null ? this.el[name].add(el) : el;
     };
 
     UpstartMonitor.prototype.getElClass = function(name) {

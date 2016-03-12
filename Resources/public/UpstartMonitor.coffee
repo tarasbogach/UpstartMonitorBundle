@@ -5,7 +5,7 @@ class @UpstartMonitor
 	job: null
 	tag: null
 	ws: null
-	filter: null
+	filterTag: null
 	constructor:(el, @cnf)->
 		@ns = arguments.callee.name
 		@el = {}
@@ -13,9 +13,9 @@ class @UpstartMonitor
 		@initEl()
 		@job = {}
 		@tag = {}
-		@filter = []
 		@createTag(tag) for tagName, tag of @cnf.tag
 		@createJob(job) for jobName, job of @cnf.job
+		@el.allTags.click(@onTag)
 		@el.start.click({action: 'start'}, @onAction)
 		@el.stop.click({action: 'stop'}, @onAction)
 		@el.restart.click({action: 'restart'}, @onAction)
@@ -26,7 +26,8 @@ class @UpstartMonitor
 			type:'action'
 			data: {
 				action: ev.data.action
-				filter: ev.data.filer ? @filter
+				job: ev.data.job?.name ? null
+				tag: @filterTag ? null
 			}
 		}))
 	createWs:=>
@@ -42,6 +43,7 @@ class @UpstartMonitor
 			when 'state'
 				@updateState(msg.data)
 	updateState:(jobs)->
+		highlight = @getNsClass('highlight')
 		for name, state of jobs
 			cnf = @cnf.job[name]
 			els = @job[name]
@@ -49,9 +51,19 @@ class @UpstartMonitor
 			prevQuantity = els.quantity ? 0
 			els.quantity = quantity
 			els.started.text(quantity)
-			els.stopped.text(cnf.quantity - quantity)
+			switch true
+				when quantity == 0 then cssState = 'label-danger'
+				when quantity < cnf.quantity then cssState = 'label-warning'
+				when quantity >= cnf.quantity then cssState = 'label-success'
+			els.state
+				.removeClass('label-danger')
+				.removeClass('label-success')
+				.removeClass('label-warning')
+				.addClass(cssState)
+			els.stop.prop('disabled', quantity == 0)
+			els.restart.prop('disabled', quantity == 0)
+			els.start.prop('disabled', quantity >= cnf.quantity)
 			if prevQuantity != quantity
-				highlight = @getNsClass('highlight')
 				els.row.removeClass(highlight).addClass(highlight)
 	onConnected:(e)=>
 		@el.disconnected.hide()
@@ -61,18 +73,27 @@ class @UpstartMonitor
 	onError:(e)=>
 		@el.disconnected.show()
 	createTag:(tag)->
-		@tag[tag.name] = $('<button class="navbar-btn btn btn-xs btn-success"></button>')
-			.data(tag)
-			.text(tag.name ? '')
+		$('<li><a href="#"></a></li>')
 			.appendTo(@el.tag)
-		@el.tag.append(' ')
+			.click({tag: tag.name}, @onTag)
+			.find('a')
+			.text(tag.name)
+		@tag[tag.name] = $([]) if tag?
+	onTag:(ev)=>
+		if ev.data?.tag?
+			@el.job.find('tr').hide()
+			@tag[ev.data.tag].show()
+			@filterTag = ev.data.tag
+		else
+			@el.job.find('tr').show()
+			@filterTag = null
 	createJob:(job)->
 		@job[job.name] = map = {
 			quantity: 0
 			row: null
 			name: null
 			started: null
-			stopped: null
+			state: null
 			start: null
 			stop: null
 			restart: null
@@ -80,39 +101,58 @@ class @UpstartMonitor
 			tags: null
 		}
 		td = '<td></td>'
-		map.row = $('<tr></tr>').appendTo(@el.job)
-		map.name = $('<strong></strong>').text(job.name ? '').appendTo($(td).attr('width', '80%').appendTo(map.row))
-		map.tags = $(td).appendTo(map.row)
+		map.row = $('<tr></tr>').data('name', job.name).appendTo(@el.job)
+		map.state = $('<span class="label label-danger"></span>').appendTo($(td).appendTo(map.row))
+		map.started = $('<span>0</span>').appendTo(map.state)
+		map.state.append(' / ')
+		$('<span></span>').text(job.quantity).appendTo(map.state)
+		nameTd = $(td).css('width', '80%').appendTo(map.row)
+		map.name = $('<strong></strong>')
+			.text(job.name ? '')
+			.appendTo(nameTd)
+		map.tags = $('<span class="pull-right"></span>').appendTo(nameTd)
+		map.tags.append(' ')
 		for tagName in job.tag
-			tagEl = $('<button class="btn btn-xs btn-success"></button>')
-				.data(@cnf.tag[tagName])
-				.text(tagName ? '')
+			$('<button class="btn btn-xs btn-primary"></button>')
 				.appendTo(map.tags)
-			@tag[tagName].add(tagEl)
+				.click({tag: tagName}, @onTag)
+				.text(tagName ? '')
+			@tag[tagName] = @tag[tagName].add(map.row)
 			map.tags.append(' ')
-		map.started = $('<span class="label label-success">0</span>').appendTo($(td).appendTo(map.row))
-		map.stopped = $('<span class="label label-danger">0</span>').appendTo($(td).appendTo(map.row))
 		map.start = $('
 			<button class="btn btn-xs btn-success" title="Start">
 				<span class="glyphicon glyphicon-play"></span>
 			</button>
-		').prop('disabled', true).appendTo($(td).appendTo(map.row))
+		')
+			.prop('disabled', true)
+			.click({action: 'start', job: job}, @onAction)
+			.appendTo($(td).appendTo(map.row))
 		map.stop = $('
 			<button class="btn btn-xs btn-danger" title="Stop">
 				<span class="glyphicon glyphicon-stop"></span>
 			</button>
-		').prop('disabled', true).appendTo($(td).appendTo(map.row))
+		')
+			.prop('disabled', true)
+			.click({action: 'stop', job: job}, @onAction)
+			.appendTo($(td).appendTo(map.row))
 		map.restart = $('
 			<button class="btn btn-xs btn-warning" title="Restart">
 				<span class="glyphicon glyphicon-refresh"></span>
 			</button>
-		').prop('disabled', true).appendTo($(td).appendTo(map.row))
+		')
+			.prop('disabled', true)
+			.click({action: 'restart', job: job}, @onAction)
+			.appendTo($(td).appendTo(map.row))
 		map.log = $('
 			<button class="btn btn-xs btn-info" title="Log">
 				<span class="glyphicon glyphicon-open-file"></span>
 			</button>
-		').appendTo($(td).appendTo(map.row))
-	addEl: (name, tmpl = '<div></div>') -> @el[name] = $(tmpl).addClass(@getElClass(name))
+		')
+			.click({action: 'log', job: job}, @onAction)
+			.appendTo($(td).appendTo(map.row))
+	addEl: (name, tmpl = '<div></div>') ->
+		el = $(tmpl).addClass(@getElClass(name))
+		@el[name] =  if @el[name]? then @el[name].add(el) else el
 	getElClass: (name) -> @ns + '-el-' + name
 	getNsClass: (name) -> @ns + '-' + name
 	getNsSelector: (name) -> '.' + @ns + '-' + name

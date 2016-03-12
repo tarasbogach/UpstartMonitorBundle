@@ -2,8 +2,6 @@ $ns: "UpstartMonitor-";
 $el: "UpstartMonitor-el-";
 .#{$el}root{
   background: #222;
-  padding-top: 70px;
-  padding-bottom: 70px;
 }
 @keyframes #{$ns}highlight {
   0% {background: white;}
