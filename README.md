@@ -63,9 +63,9 @@ upstart:
             native: {respawn: true, setuid: root}
         #...
 ```
-See [sfnix/upstart](https://github.com/tarasbogach/UpstartBundle) for upstart
+See [sfnix/upstart](https://github.com/tarasbogach/UpstartBundle) for upstart configuration.
 ```bash
 $ ./app/console upstart:install
 $ ./app/console upstart:start monitor
 ```
-You can go to http://<your.domain>/upstart
+You can go to http://{your.domain}/upstart
