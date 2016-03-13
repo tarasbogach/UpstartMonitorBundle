@@ -5,9 +5,10 @@ $el: "UpstartMonitor-el-";
 }
 @keyframes #{$ns}highlight {
   0% {background: white;}
-  25% {background: orange;}
-  50% {background: white;}
-  75% {background: orange;}
+  //25% {background: orange;}
+  //50% {background: white;}
+  //75% {background: orange;}
+  50% {background: orange ;}
   100% {background: white;}
 }
 .#{$ns}highlight{

@@ -44,15 +44,6 @@
         this.createJob(job);
       }
       this.el.allTags.click(this.onTag);
-      this.el.start.click({
-        action: 'start'
-      }, this.onAction);
-      this.el.stop.click({
-        action: 'stop'
-      }, this.onAction);
-      this.el.restart.click({
-        action: 'restart'
-      }, this.onAction);
       this.createWs();
     }
 
@@ -121,9 +112,6 @@
         els.restart.prop('disabled', quantity === 0);
         els.start.prop('disabled', quantity >= cnf.quantity);
         if (els.quantity !== quantity) {
-          if (typeof console !== "undefined" && console !== null) {
-            console.log(1);
-          }
           els.row.removeClass(highlight);
           (function(els) {
             return setTimeout(function() {

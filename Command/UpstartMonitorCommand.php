@@ -63,7 +63,7 @@ class UpstartMonitorCommand
 			$this->monitorConfig['server']['host']
 		);
 		$this->server->run();
-		$output->writeln('Shutting down.');
+		$this->writeLog('Shutting down.');
 	}
 
 	public function getState(){
@@ -112,15 +112,11 @@ class UpstartMonitorCommand
 				if($goal == 'start'){
 					$state[$job][$instance]++;
 				}
-//				if(!in_array("$goal/$status", ["stop/waiting","start/running"])){
-//					$this->output->writeln("$goal/$status");
-//				}
 			}
 		});
 	}
 
 	public function onStateReceived($state){
-//		$this->output->writeln(json_encode($state));
 		$msg = json_encode(['type' => 'state', 'data' => $state]);
 		foreach($this->clients as $client){
 			/**
@@ -130,19 +126,21 @@ class UpstartMonitorCommand
 		}
 	}
 
+	public function writeLog($message, $data = []){
+		$this->output->writeln(date(DATE_W3C)." $message ".json_encode($data));
+	}
+
 	public function onOpen(ConnectionInterface $conn){
 		$accessToken = $conn->WebSocket->request->getQuery()['accessToken'];
 		$accessToken = $this->bundle->checkAccessToken($accessToken);
 		if(!$accessToken){
-			$this->output->writeln("<warning>Access deny.</warning>");
+			$this->writeLog("Access deny.");
 			$msg = json_encode(['type' => 'accessDeny']);
 			$conn->send($msg);
 			$conn->close();
 			return;
 		}
-//		$bundle = $this->get('kernel')->getBundle('UpstartMonitorBundle');
-//		$bundle->checkAccessToken($accessToken);
-		$this->output->writeln("client is connected ".json_encode($accessToken));
+		$this->writeLog("Client is connected.", $accessToken);
 		$this->clients->attach($conn);
 		if(count($this->clients) == 1){
 			$this->getState();
@@ -165,7 +163,7 @@ class UpstartMonitorCommand
 	}
 
 	protected function onHack(){
-		$this->output->writeln("<warning>Hacker is detected!</warning>");
+		$this->writeLog("Hacker detected!");
 	}
 
 	protected function onStart($job = null, $tag = null){
@@ -181,8 +179,8 @@ class UpstartMonitorCommand
 	}
 
 	public function onMessage(ConnectionInterface $from, $msg){
-		$this->output->writeln("message is received " . $msg);
 		$msg = json_decode($msg, true);
+		$this->writeLog("Message is received.", $msg);
 		switch($msg['type']){
 			case 'action':
 				$action = $msg['data']['action'];

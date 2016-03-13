@@ -16,9 +16,9 @@ class @UpstartMonitor
 		@createTag(tag) for tagName, tag of @cnf.tag
 		@createJob(job) for jobName, job of @cnf.job
 		@el.allTags.click(@onTag)
-		@el.start.click({action: 'start'}, @onAction)
-		@el.stop.click({action: 'stop'}, @onAction)
-		@el.restart.click({action: 'restart'}, @onAction)
+#		@el.start.click({action: 'start'}, @onAction)
+#		@el.stop.click({action: 'stop'}, @onAction)
+#		@el.restart.click({action: 'restart'}, @onAction)
 		@createWs()
 	onAction:(ev)=>
 		@ws.send(JSON.stringify({
@@ -65,7 +65,6 @@ class @UpstartMonitor
 			els.restart.prop('disabled', quantity == 0)
 			els.start.prop('disabled', quantity >= cnf.quantity)
 			if els.quantity != quantity
-				console?.log(1)
 				els.row.removeClass(highlight)
 				do (els)->
 					setTimeout(
