@@ -54,9 +54,6 @@
         action: 'restart'
       }, this.onAction);
       this.createWs();
-      if (typeof console !== "undefined" && console !== null) {
-        console.log(this);
-      }
     }
 
     UpstartMonitor.prototype.onAction = function(ev) {
@@ -76,7 +73,7 @@
       if ((ref = this.ws) != null) {
         ref.close();
       }
-      this.ws = new WebSocket(this.cnf.client.schema + '://' + window.location.hostname + ':' + this.cnf.client.port + this.cnf.client.path);
+      this.ws = new WebSocket(this.cnf.client.schema + '://' + window.location.hostname + ':' + this.cnf.client.port + this.cnf.client.path + '?accessToken=' + this.cnf.accessToken);
       this.ws.onmessage = this.onMessage;
       this.ws.onopen = this.onConnected;
       this.ws.onclose = this.onDisconnected;
@@ -89,11 +86,18 @@
       switch (msg.type) {
         case 'state':
           return this.updateState(msg.data);
+        case 'accessDeny':
+          if (true === confirm("Your access token seems to be expired.\nDo reload this page to fix the problem?")) {
+            return window.location.reload();
+          }
+          break;
+        default:
+          return typeof console !== "undefined" && console !== null ? console.log(msg) : void 0;
       }
     };
 
     UpstartMonitor.prototype.updateState = function(jobs) {
-      var cnf, cssState, els, highlight, name, prevQuantity, quantity, ref, results, state;
+      var cnf, cssState, els, highlight, name, quantity, results, state;
       highlight = this.getNsClass('highlight');
       results = [];
       for (name in jobs) {
@@ -101,8 +105,6 @@
         cnf = this.cnf.job[name];
         els = this.job[name];
         quantity = cnf.quantity > 1 ? state[1] : state[0];
-        prevQuantity = (ref = els.quantity) != null ? ref : 0;
-        els.quantity = quantity;
         els.started.text(quantity);
         switch (true) {
           case quantity === 0:
@@ -118,11 +120,18 @@
         els.stop.prop('disabled', quantity === 0);
         els.restart.prop('disabled', quantity === 0);
         els.start.prop('disabled', quantity >= cnf.quantity);
-        if (prevQuantity !== quantity) {
-          results.push(els.row.removeClass(highlight).addClass(highlight));
-        } else {
-          results.push(void 0);
+        if (els.quantity !== quantity) {
+          if (typeof console !== "undefined" && console !== null) {
+            console.log(1);
+          }
+          els.row.removeClass(highlight);
+          (function(els) {
+            return setTimeout(function() {
+              return els.row.addClass(highlight);
+            }, 10);
+          })(els);
         }
+        results.push(els.quantity = quantity);
       }
       return results;
     };

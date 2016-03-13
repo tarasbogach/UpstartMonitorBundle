@@ -20,7 +20,6 @@ class @UpstartMonitor
 		@el.stop.click({action: 'stop'}, @onAction)
 		@el.restart.click({action: 'restart'}, @onAction)
 		@createWs()
-		console?.log(@)
 	onAction:(ev)=>
 		@ws.send(JSON.stringify({
 			type:'action'
@@ -32,7 +31,7 @@ class @UpstartMonitor
 		}))
 	createWs:=>
 		@ws?.close()
-		@ws = new WebSocket(@cnf.client.schema+'://'+window.location.hostname+':'+@cnf.client.port+@cnf.client.path)
+		@ws = new WebSocket(@cnf.client.schema+'://'+window.location.hostname+':'+@cnf.client.port+@cnf.client.path+'?accessToken='+@cnf.accessToken)
 		@ws.onmessage = @onMessage
 		@ws.onopen = @onConnected
 		@ws.onclose = @onDisconnected
@@ -42,14 +41,16 @@ class @UpstartMonitor
 		switch msg.type
 			when 'state'
 				@updateState(msg.data)
+			when 'accessDeny'
+				window.location.reload() if true == confirm("Your access token seems to be expired.\nDo reload this page to fix the problem?")
+			else
+				console?.log(msg)
 	updateState:(jobs)->
 		highlight = @getNsClass('highlight')
 		for name, state of jobs
 			cnf = @cnf.job[name]
 			els = @job[name]
 			quantity = if cnf.quantity > 1 then state[1] else state[0]
-			prevQuantity = els.quantity ? 0
-			els.quantity = quantity
 			els.started.text(quantity)
 			switch true
 				when quantity == 0 then cssState = 'label-danger'
@@ -63,8 +64,15 @@ class @UpstartMonitor
 			els.stop.prop('disabled', quantity == 0)
 			els.restart.prop('disabled', quantity == 0)
 			els.start.prop('disabled', quantity >= cnf.quantity)
-			if prevQuantity != quantity
-				els.row.removeClass(highlight).addClass(highlight)
+			if els.quantity != quantity
+				console?.log(1)
+				els.row.removeClass(highlight)
+				do (els)->
+					setTimeout(
+						-> els.row.addClass(highlight),
+						10
+					)
+			els.quantity = quantity
 	onConnected:(e)=>
 		@el.disconnected.hide()
 	onDisconnected:(e)=>

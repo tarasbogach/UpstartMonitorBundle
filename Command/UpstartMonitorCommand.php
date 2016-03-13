@@ -7,6 +7,7 @@ use Ratchet\Http\HttpServer;
 use Ratchet\MessageComponentInterface;
 use Ratchet\Server\IoServer;
 use Ratchet\WebSocket\WsServer;
+use SfNix\UpstartMonitorBundle\UpstartMonitorBundle;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -36,6 +37,10 @@ class UpstartMonitorCommand
 	 * @var IoServer
 	 */
 	protected $server;
+	/**
+	 * @var UpstartMonitorBundle
+	 */
+	protected $bundle;
 
 	protected function configure(){
 		$this
@@ -48,6 +53,9 @@ class UpstartMonitorCommand
 		$this->jobConfig = $this->getContainer()->getParameter('upstart');
 		$this->clients = new \SplObjectStorage;
 		$this->output = $output;
+		$this->bundle = $this->getContainer()
+			->get('kernel')
+			->getBundle('UpstartMonitorBundle');
 		$http = new HttpServer(new WsServer($this));
 		$this->server = IoServer::factory(
 			$http,
@@ -113,25 +121,90 @@ class UpstartMonitorCommand
 
 	public function onStateReceived($state){
 //		$this->output->writeln(json_encode($state));
-		$state = json_encode(['type' => 'state', 'data' => $state]);
+		$msg = json_encode(['type' => 'state', 'data' => $state]);
 		foreach($this->clients as $client){
 			/**
 			 * @var ConnectionInterface $client
 			 */
-			$client->send($state);
+			$client->send($msg);
 		}
 	}
 
 	public function onOpen(ConnectionInterface $conn){
-		$this->output->writeln("client is connected");
+		$accessToken = $conn->WebSocket->request->getQuery()['accessToken'];
+		$accessToken = $this->bundle->checkAccessToken($accessToken);
+		if(!$accessToken){
+			$this->output->writeln("<warning>Access deny.</warning>");
+			$msg = json_encode(['type' => 'accessDeny']);
+			$conn->send($msg);
+			$conn->close();
+			return;
+		}
+//		$bundle = $this->get('kernel')->getBundle('UpstartMonitorBundle');
+//		$bundle->checkAccessToken($accessToken);
+		$this->output->writeln("client is connected ".json_encode($accessToken));
 		$this->clients->attach($conn);
 		if(count($this->clients) == 1){
 			$this->getState();
 		}
 	}
 
+	protected function onChangeState($goal, $job = null, $tag = null){
+		$procect = $this->jobConfig['project'];
+		if($job){
+			popen("$goal ".escapeshellarg("$procect/$job"), 'r');
+		}elseif($tag){
+			if(!in_array($tag, $this->jobConfig['tagNames'], true)){
+				return $this->onHack();
+			}
+			popen("initctl emit ".escapeshellarg("$procect.$tag.$goal"), 'r');
+		}else{
+			popen("initctl emit ".escapeshellarg("$procect.$goal"), 'r');
+		}
+		return true;
+	}
+
+	protected function onHack(){
+		$this->output->writeln("<warning>Hacker is detected!</warning>");
+	}
+
+	protected function onStart($job = null, $tag = null){
+		$this->onChangeState('start', $job, $tag);
+
+	}
+	protected function onStop($job = null, $tag = null){
+		$this->onChangeState('stop', $job, $tag);
+	}
+
+	protected function onLog($job = null, $tag = null){
+
+	}
+
 	public function onMessage(ConnectionInterface $from, $msg){
 		$this->output->writeln("message is received " . $msg);
+		$msg = json_decode($msg, true);
+		switch($msg['type']){
+			case 'action':
+				$action = $msg['data']['action'];
+				$job = $msg['data']['job'];
+				$tag = $msg['data']['tag'];
+				switch($action){
+					case 'start':
+						$this->onStart($job, $tag);
+						break;
+					case 'stop':
+						$this->onStop($job, $tag);
+						break;
+					case 'restart':
+						$this->onStop($job, $tag);
+						$this->onStart($job, $tag);
+						break;
+					case 'log':
+						$this->onLog($job, $tag);
+						break;
+				}
+				break;
+		}
 
 	}
 

@@ -3,10 +3,16 @@
 namespace SfNix\UpstartMonitorBundle\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\HttpFoundation\File\Exception\AccessDeniedException;
 
 class DefaultController extends Controller{
 
 	public function indexAction(){
+		$this->denyAccessUnlessGranted(
+			'IS_AUTHENTICATED_FULLY',
+			null,
+			'You mast be fully authenticated to view this page.'
+		);
 		$cnf = [];
 		$upstart = $this->container->getParameter('upstart');
 		$upstart_monitor = $this->container->getParameter('upstart_monitor');
@@ -23,7 +29,10 @@ class DefaultController extends Controller{
 				$cnf['tag'][$tagName]['job'][$job['name']] = $item;
 			}
 		}
+		$bundle = $this->get('kernel')->getBundle('UpstartMonitorBundle');
+		$cnf['accessToken'] = $bundle->createAccessToken();
 		$cnf = json_encode($cnf);
+
 		return $this->render(
 			'UpstartMonitorBundle:Default:index.html.twig',
 			[
