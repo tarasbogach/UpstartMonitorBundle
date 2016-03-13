@@ -47,9 +47,11 @@ imports:
 ```yml
 # app/config/upstart.yml
 upstart_monitor:
+    #WebSocket server to start.
     server:
       host: 0.0.0.0
       port: 13000
+    #WebSocket client.
     client:
       schema: 'ws'
       port: 13000
@@ -69,3 +71,6 @@ $ ./app/console upstart:install
 $ ./app/console upstart:start monitor
 ```
 You can go to http://{your.domain}/upstart
+##Warning
+UpstartMonitorBundle upstart:monitor command must run with superuser rights to be able to start/stop jobs, so please, be careful!
+UpstartMonitorBundle comes with ABSOLUTELY NO WARRANTY, use it at your own risk.
