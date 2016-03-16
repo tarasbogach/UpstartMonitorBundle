@@ -20,7 +20,7 @@ public function registerBundles()
     $bundles = [
         //...
         new SfNix\UpstartBundle\UpstartBundle(),
-        new SfNix\UpstartBundle\UpstartMonitorBundle(),
+        new SfNix\UpstartMonitorBundle\UpstartMonitorBundle(),
     ];
     //...
 }

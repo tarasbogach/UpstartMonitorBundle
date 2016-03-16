@@ -9,7 +9,7 @@
     {"name": "Taras Bogach", "email": "taras.bogach@gmail.com"}
   ],
   "autoload": {
-    "psr-4": { "SfNix\\UpstartBundleMonitor\\": "" }
+    "psr-4": { "SfNix\\UpstartMonitorBundle\\": "" }
   },
   "require": {
     "sfnix/upstart": "*",
