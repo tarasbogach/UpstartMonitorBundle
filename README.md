@@ -62,7 +62,7 @@ upstart:
         monitor:
             command: upstart:monitor
             verbose: 1
-            native: {respawn: true, setuid: root}
+            native: {respawn: true, setuid: root, manual: true}
         #...
 ```
 See [sfnix/upstart](https://github.com/tarasbogach/UpstartBundle) for upstart configuration.
